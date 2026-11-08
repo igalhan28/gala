@@ -254,14 +254,13 @@ public class Gala.ShadowEffect : Clutter.Effect {
                     var real_dy = dy - corner_radius * sin;
 
                     // use fast Gaussian blur approximation
-                    var normalized = (double) Math.sqrt (real_dx * real_dx + real_dy * real_dy) / shadow_size;
-                    var current_color = (uint8) (1.0 - normalized * normalized * (3.0 - 2.0 * normalized) * 255.0);
+                    var normalized = ((double) Math.sqrt (real_dx * real_dx + real_dy * real_dy) / shadow_size).clamp (0.0, 1.0);
+                    var smoothstep = normalized * normalized * (3.0 - 2.0 * normalized);
 
-                    // when we're very close to the rounded corner, our real_distance can be wrong (idk why).
-                    // If we're here, we're not inside the corner yet and that means we must draw something
-                    if (current_color == 0) {
-                        current_color = 255;
-                    }
+                    // Compute (1 - smoothstep) * 255 and round it, so the value is always within [0, 255].
+                    // Casting a negative double to uint8 is undefined behaviour in C: on x86 it happened to wrap around
+                    // to roughly the right value, but on aarch64 it saturates to 0, which produced hard-edged corners.
+                    var current_color = (uint8) Math.round ((1.0 - smoothstep) * 255.0);
 
                     data[current_row + x] = current_color;
                     data[current_row_end - x] = current_color;
