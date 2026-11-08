@@ -9,6 +9,9 @@
 public class Gala.DBus {
     private static DBus? instance;
     private static WindowManagerGala wm;
+#if HAS_MUTTER50
+    private static BrightnessKeys brightness_keys;
+#endif
 
     [DBus (visible = false)]
     public static void init (
@@ -29,6 +32,46 @@ public class Gala.DBus {
             on_name_lost
         );
 
+<<<<<<< Updated upstream
+#if HAS_MUTTER50
+        var brightness_manager = new BrightnessManager (wm.get_display ());
+=======
+<<<<<<< Updated upstream
+=======
+#if HAS_MUTTER50
+        var brightness_manager = new BrightnessManager (wm.get_display ());
+        brightness_keys = new BrightnessKeys (wm.get_display (), brightness_manager, notifications_manager);
+>>>>>>> Stashed changes
+
+        Bus.own_name (
+            SESSION, "io.elementary.gala.BrightnessManager", NONE, null,
+            (connection, name) => {
+                try {
+                    connection.register_object ("/io/elementary/gala/BrightnessManager", brightness_manager);
+                } catch (Error e) {
+                    warning (e.message);
+                }
+            },
+            on_name_lost
+        );
+
+        Bus.own_name (
+            SESSION, "org.gnome.Shell.Brightness", NONE, null,
+            (connection, name) => {
+                try {
+                    connection.register_object ("/org/gnome/Shell/Brightness", new GSDBrightnessAdapter (brightness_manager));
+                } catch (Error e) {
+                    warning (e.message);
+                }
+            },
+            on_name_lost
+        );
+#endif
+
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
         Bus.own_name (
             SESSION, "org.pantheon.gala", NONE, null,
             (connection, name) => {

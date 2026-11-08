@@ -17,7 +17,7 @@ public class Gala.SessionManager : Object {
         public signal void canceled ();
         public signal void closed ();
 
-        public abstract void open (uint type, uint timestamp, uint open_length, ObjectPath[] inhibiters) throws DBusError, IOError;
+        public abstract async void open (uint type, uint timestamp, uint open_length, ObjectPath[] inhibiters) throws DBusError, IOError;
     }
 
     private static SessionManager? instance;
@@ -69,11 +69,18 @@ public class Gala.SessionManager : Object {
         proxy = null;
     }
 
-    public void open (uint type, uint timestamp, uint open_length, ObjectPath[] inhibiters) throws DBusError, IOError {
+    /*
+     * This must be async: gala is the Wayland compositor, and the dialog is shown by a
+     * Wayland client (wingpanel). A synchronous call here blocks the compositor's main loop
+     * while the client needs it to map its dialog, deadlocking both until the D-Bus timeout
+     * (~25s). gnome-session then sees Open () fail and drops the pending logout, so the
+     * dialog's "Log Out" button does nothing.
+     */
+    public async void open (uint type, uint timestamp, uint open_length, ObjectPath[] inhibiters) throws DBusError, IOError {
         if (proxy == null) {
             throw new DBusError.FAILED ("io.elementary.wingpanel.session.EndSessionDialog DBus interface is not registered.");
         }
 
-        proxy.open (type, timestamp, open_length, inhibiters);
+        yield proxy.open (type, timestamp, open_length, inhibiters);
     }
 }

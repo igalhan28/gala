@@ -130,6 +130,16 @@
       <summary>Shortcut to move the current window to last workspace</summary>
       <description></description>
     </key>
+    <key type="as" name="screen-brightness-up">
+      <default><![CDATA[['XF86MonBrightnessUp']]]></default>
+      <summary>Increase screen brightness</summary>
+      <description></description>
+    </key>
+    <key type="as" name="screen-brightness-down">
+      <default><![CDATA[['XF86MonBrightnessDown']]]></default>
+      <summary>Decrease screen brightness</summary>
+      <description></description>
+    </key>
     <key type="as" name="zoom-in">
       <default><![CDATA[['<Super>plus', '<Super>KP_Add']]]></default>
       <summary>Zoom in</summary>
