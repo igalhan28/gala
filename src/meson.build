@@ -46,19 +46,10 @@ gala_bin_sources = files(
     'Misc/WindowTracker.vala',
     'Misc/WorkspaceManager.vala',
     'Misc/Zoom.vala',
-<<<<<<< Updated upstream
-    'Misc/Brightness/BrightnessManager.vala',
-    'Misc/Brightness/GSDBrightnessAdapter.vala',
-    'Misc/Brightness/MonitorBrightness.vala',
-=======
-<<<<<<< Updated upstream
-=======
     'Misc/Brightness/BrightnessKeys.vala',
     'Misc/Brightness/BrightnessManager.vala',
     'Misc/Brightness/GSDBrightnessAdapter.vala',
     'Misc/Brightness/MonitorBrightness.vala',
->>>>>>> Stashed changes
->>>>>>> Stashed changes
     'Misc/OSK/OSKManager.vala',
     'Misc/OSK/OSKProxy.vala',
     'Misc/OSK/OSKReceiver.vala',

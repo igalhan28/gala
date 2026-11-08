@@ -172,6 +172,11 @@ public class Gala.WorkspaceClone : Widget {
         unowned var monitor_manager = display.get_context ().get_backend ().get_monitor_manager ();
         monitor_manager.monitors_changed.connect (update_targets);
         notify["monitor-scale"].connect (update_targets);
+
+        unowned var notch_settings = InternalUtils.get_notch_settings ();
+        if (notch_settings != null) {
+            notch_settings.changed["notch-height"].connect (update_targets);
+        }
         update_targets ();
     }
 
@@ -195,8 +200,12 @@ public class Gala.WorkspaceClone : Widget {
 
         monitor_scale = Utils.get_ui_scaling_factor (display, primary);
 
-        var scale = (float)(monitor.height - Utils.scale_to_int (TOP_OFFSET + BOTTOM_OFFSET, monitor_scale)) / monitor.height;
-        var pivot_y = Utils.scale_to_int (TOP_OFFSET, monitor_scale) / (monitor.height - monitor.height * scale);
+        // Keep the scaled workspace below the display notch, if there is one
+        var top_offset = Utils.scale_to_int (TOP_OFFSET, monitor_scale) + InternalUtils.get_notch_height (display, primary);
+        var bottom_offset = Utils.scale_to_int (BOTTOM_OFFSET, monitor_scale);
+
+        var scale = (float)(monitor.height - top_offset - bottom_offset) / monitor.height;
+        var pivot_y = top_offset / (monitor.height - monitor.height * scale);
         background.set_pivot_point (0.5f, pivot_y);
 
         var initial_width = monitor.width;
@@ -206,9 +215,9 @@ public class Gala.WorkspaceClone : Widget {
         add_target (new PropertyTarget (MULTITASKING_VIEW, background, "scale-x", typeof (double), 1d, (double) scale));
         add_target (new PropertyTarget (MULTITASKING_VIEW, background, "scale-y", typeof (double), 1d, (double) scale));
 
-        window_container.padding_top = Utils.scale_to_int (TOP_OFFSET, monitor_scale);
+        window_container.padding_top = top_offset;
         window_container.padding_left = window_container.padding_right = (int) (monitor.width - monitor.width * scale) / 2;
-        window_container.padding_bottom = Utils.scale_to_int (BOTTOM_OFFSET, monitor_scale);
+        window_container.padding_bottom = bottom_offset;
     }
 
     private void activate (bool close_view) {

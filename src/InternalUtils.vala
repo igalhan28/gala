@@ -142,5 +142,62 @@ namespace Gala {
 
             return null;
         }
+
+        private const string WINGPANEL_SCHEMA = "io.elementary.desktop.wingpanel";
+        private const string NOTCH_HEIGHT_KEY = "notch-height";
+
+        private static GLib.Settings? wingpanel_settings = null;
+        private static bool wingpanel_settings_looked_up = false;
+
+        /**
+         * Returns the wingpanel settings if they are installed and provide the
+         * notch-height key, null otherwise. Use it to get notified about notch changes.
+         */
+        public static unowned GLib.Settings? get_notch_settings () {
+            if (!wingpanel_settings_looked_up) {
+                wingpanel_settings_looked_up = true;
+
+                unowned var source = SettingsSchemaSource.get_default ();
+                var schema = source != null ? source.lookup (WINGPANEL_SCHEMA, true) : null;
+                if (schema != null && schema.has_key (NOTCH_HEIGHT_KEY)) {
+                    wingpanel_settings = new GLib.Settings.full (schema, null, null);
+                }
+            }
+
+            return wingpanel_settings;
+        }
+
+        /**
+         * Returns the height of the display notch (e.g. on Apple Silicon MacBooks) of the given
+         * monitor in stage coordinates, or 0 if the monitor has no notch.
+         *
+         * The notch height is the one configured for wingpanel and only applies to the builtin panel.
+         */
+        public static int get_notch_height (Meta.Display display, int monitor) {
+            unowned var settings = get_notch_settings ();
+            if (settings == null) {
+                return 0;
+            }
+
+            var height = settings.get_int (NOTCH_HEIGHT_KEY);
+            if (height <= 0) {
+                return 0;
+            }
+
+            unowned var monitor_manager = display.get_context ().get_backend ().get_monitor_manager ();
+            foreach (unowned var logical_monitor in monitor_manager.get_logical_monitors ()) {
+                if (logical_monitor.get_number () != monitor) {
+                    continue;
+                }
+
+                foreach (unowned var physical_monitor in logical_monitor.get_monitors ()) {
+                    if (physical_monitor.is_builtin ()) {
+                        return Utils.scale_to_int (height, Utils.get_ui_scaling_factor (display, monitor));
+                    }
+                }
+            }
+
+            return 0;
+        }
     }
 }

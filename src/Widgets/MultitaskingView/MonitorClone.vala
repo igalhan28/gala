@@ -12,6 +12,8 @@
  * workspaces-only-on-primary is set to true.
  */
 public class Gala.MonitorClone : Widget {
+    private const int DEFAULT_PADDING_TOP = 12;
+
     public signal void window_selected (Meta.Window window);
 
     public WindowManager wm { get; construct; }
@@ -39,6 +41,12 @@ public class Gala.MonitorClone : Widget {
         window_container.add_constraint (new Clutter.BindConstraint (this, SIZE, 0.0f));
         window_container.window_selected.connect ((w) => { window_selected (w); });
         bind_property ("monitor-scale", window_container, "monitor-scale");
+        update_padding ();
+
+        unowned var notch_settings = InternalUtils.get_notch_settings ();
+        if (notch_settings != null) {
+            notch_settings.changed["notch-height"].connect (update_padding);
+        }
 
         add_child (background);
         add_child (window_container);
@@ -59,5 +67,18 @@ public class Gala.MonitorClone : Widget {
         set_size (monitor_geometry.width, monitor_geometry.height);
 
         monitor_scale = Utils.get_ui_scaling_factor (display, monitor);
+
+        update_padding ();
+    }
+
+    /**
+     * Keep the window clones below the display notch, if there is one
+     */
+    private void update_padding () {
+        if (window_container == null) {
+            return;
+        }
+
+        window_container.padding_top = DEFAULT_PADDING_TOP + InternalUtils.get_notch_height (wm.get_display (), monitor);
     }
 }

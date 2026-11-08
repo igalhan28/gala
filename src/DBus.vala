@@ -32,16 +32,9 @@ public class Gala.DBus {
             on_name_lost
         );
 
-<<<<<<< Updated upstream
-#if HAS_MUTTER50
-        var brightness_manager = new BrightnessManager (wm.get_display ());
-=======
-<<<<<<< Updated upstream
-=======
 #if HAS_MUTTER50
         var brightness_manager = new BrightnessManager (wm.get_display ());
         brightness_keys = new BrightnessKeys (wm.get_display (), brightness_manager, notifications_manager);
->>>>>>> Stashed changes
 
         Bus.own_name (
             SESSION, "io.elementary.gala.BrightnessManager", NONE, null,
@@ -68,10 +61,6 @@ public class Gala.DBus {
         );
 #endif
 
-<<<<<<< Updated upstream
-=======
->>>>>>> Stashed changes
->>>>>>> Stashed changes
         Bus.own_name (
             SESSION, "org.pantheon.gala", NONE, null,
             (connection, name) => {

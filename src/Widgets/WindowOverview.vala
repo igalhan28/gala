@@ -125,7 +125,7 @@ public class Gala.WindowOverview : Root, RootTarget {
             model.items_changed.connect (on_items_changed);
 
             var window_clone_container = new WindowCloneContainer (wm, model, scale, mode) {
-                padding_top = TOP_GAP,
+                padding_top = TOP_GAP + InternalUtils.get_notch_height (display, i),
                 padding_left = BORDER,
                 padding_right = BORDER,
                 padding_bottom = BOTTOM_GAP,
