@@ -6,7 +6,6 @@
 public class Gala.BackgroundBlurEffect : Clutter.Effect {
     private const float MIN_DOWNSCALE_SIZE = 256.0f;
     private const float MAX_RADIUS = 12.0f;
-    private const int FORCE_REFRESH_FRAMES = 2;
 
     public float blur_radius { get; construct; }
     public float clip_radius { get; construct; }
@@ -28,8 +27,22 @@ public class Gala.BackgroundBlurEffect : Clutter.Effect {
     private int round_clip_radius_location;
     private int round_actor_size_location;
 
-    private int frame_counter = 0;
     private float last_box_scale_factor = 1.0f;
+
+    /* Re-blurring is expensive: it copies the stage framebuffer while it is
+     * still being drawn (which forces tile-based GPUs like Apple's AGX to
+     * flush and reload the whole render target), allocates three offscreen
+     * textures and runs several render passes. So the blurred result is kept
+     * and only recomputed when a paint redraws the whole actor. Paints that
+     * only touch part of the actor reuse it and queue a full repaint for the
+     * next frame. Re-blurring on such partial paints would also copy pixels
+     * outside the redraw clip, which still contain last frame's output
+     * including our own blurred background.
+     */
+    private bool cache_valid = false;
+    private bool repaint_requested = false;
+    private Clutter.ActorBox cached_box = {};
+    private float cached_blur_radius = 0.0f;
 
     public BackgroundBlurEffect (float blur_radius, float clip_radius, float monitor_scale) {
         Object (blur_radius: blur_radius, clip_radius: clip_radius, monitor_scale: monitor_scale);
@@ -42,6 +55,8 @@ public class Gala.BackgroundBlurEffect : Clutter.Effect {
         }
 
         base.set_actor (new_actor);
+
+        cache_valid = false;
 
         if (actor != null) {
             actor.notify["width"].connect (update_actor_size);
@@ -243,6 +258,7 @@ public class Gala.BackgroundBlurEffect : Clutter.Effect {
         round_texture = new Cogl.Texture2D.with_size (ctx, new_width, new_height);
         round_pipeline.set_layer_texture (0, round_texture);
         round_framebuffer = new Cogl.Offscreen.with_texture (round_texture);
+        cache_valid = false;
 
         setup_projection_matrix (round_framebuffer, new_width, new_height);
 
@@ -374,19 +390,96 @@ public class Gala.BackgroundBlurEffect : Clutter.Effect {
             return;
         }
 
-        var blur_node = create_blur_nodes (node);
-        paint_background (blur_node, paint_context, source_actor_box);
+        var on_stage = paint_context.get_stage_view () != null;
+
+        if (on_stage && can_use_cached_blur (paint_context, source_actor_box)) {
+            paint_cached_blur (node);
+
+            // Make sure the next frame redraws the whole actor so it can re-blur
+            repaint_requested = true;
+            queue_repaint ();
+        } else {
+            repaint_requested = false;
+
+            var blur_node = create_blur_nodes (node);
+            paint_background (blur_node, paint_context, source_actor_box);
+
+            /* Off-stage paints (screenshots, screencasts) blit from a different
+             * framebuffer, so their result must not be reused on stage.
+             */
+            cache_valid = on_stage;
+            cached_box = source_actor_box;
+            cached_blur_radius = real_blur_radius;
+        }
+
         add_actor_node (node);
     }
 
-    public override void paint (Clutter.PaintNode node, Clutter.PaintContext paint_context, Clutter.EffectPaintFlags flags) {
-        if (frame_counter == 0) {
-            frame_counter = FORCE_REFRESH_FRAMES;
-            queue_repaint ();
-        } else {
-            frame_counter--;
+    /**
+     * Whether we can paint the blur computed in an earlier frame instead of
+     * recomputing it. That's the case when this paint only redraws part of the
+     * actor, see the comment at the top.
+     */
+    private bool can_use_cached_blur (Clutter.PaintContext paint_context, Clutter.ActorBox source_actor_box) {
+        if (!cache_valid ||
+            !source_actor_box.equal (cached_box) ||
+            real_blur_radius != cached_blur_radius
+        ) {
+            // Geometry, scale or opacity changed (e.g. the dock is sliding in): blur right away
+            return false;
         }
 
-        base.paint (node, paint_context, flags);
+        /* If the repaint we requested last time still didn't cover the whole
+         * actor (e.g. it's partially offscreen or clipped), re-blur anyway
+         * instead of requesting repaints forever.
+         */
+        if (repaint_requested) {
+            return false;
+        }
+
+        return !clip_covers_rect (paint_context, get_actor_stage_rect (paint_context));
+    }
+
+    private Mtk.Rectangle get_actor_stage_rect (Clutter.PaintContext paint_context) {
+        float x, y, width, height;
+        actor.get_transformed_position (out x, out y);
+        actor.get_transformed_size (out width, out height);
+
+        // Round inwards, the redraw clip is in integer stage coordinates
+        var x1 = (int) Math.ceilf (x);
+        var y1 = (int) Math.ceilf (y);
+        var x2 = (int) Math.floorf (x + width);
+        var y2 = (int) Math.floorf (y + height);
+
+        Mtk.Rectangle rect = { x1, y1, int.max (x2 - x1, 0), int.max (y2 - y1, 0) };
+
+        // Parts outside of the view are never in its redraw clip
+        Mtk.Rectangle view_rect = {};
+        paint_context.get_stage_view ().get_layout (ref view_rect);
+
+        Mtk.Rectangle intersection;
+        if (!rect.intersect (view_rect, out intersection)) {
+            return { 0, 0, 0, 0 };
+        }
+
+        return intersection;
+    }
+
+    private static bool clip_covers_rect (Clutter.PaintContext paint_context, Mtk.Rectangle rect) {
+        unowned var redraw_clip = paint_context.get_redraw_clip ();
+        if (redraw_clip == null || rect.width == 0 || rect.height == 0) {
+            return true;
+        }
+
+        return redraw_clip.contains_rectangle (rect) == Mtk.RegionOverlap.IN;
+    }
+
+    private void paint_cached_blur (Clutter.PaintNode node) {
+        float width, height;
+        actor.get_size (out width, out height);
+
+        var cached_node = new Clutter.PipelineNode (round_pipeline);
+        cached_node.add_rectangle ({ 0.0f, 0.0f, width, height });
+        node.add_child (cached_node);
     }
 }
