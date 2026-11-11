@@ -182,7 +182,7 @@ namespace Gala {
             window_tracker = new WindowTracker ();
             WindowStateSaver.init (window_tracker);
             window_tracker.init (display);
-            WindowAttentionTracker.init (display);
+            WindowAttentionTracker.init (this);
             window_mover = new WindowMover (display, WindowListener.get_default ());
 
             notification_stack = new NotificationStack (display);
