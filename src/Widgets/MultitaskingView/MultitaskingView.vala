@@ -188,18 +188,18 @@ public class Gala.MultitaskingView : Root, RootTarget {
     }
 
     private void update_blurred_bg () {
-        if (blurred_bg != null) {
-            remove_child (blurred_bg);
-        }
+        //  if (blurred_bg != null) {
+        //      remove_child (blurred_bg);
+        //  }
 
-        brightness_effect = new Clutter.BrightnessContrastEffect ();
-        update_brightness_effect ();
+        //  brightness_effect = new Clutter.BrightnessContrastEffect ();
+        //  update_brightness_effect ();
 
-        blurred_bg = new BackgroundManager (display, display.get_primary_monitor (), true, false);
-        blurred_bg.add_effect (new BlurEffect (blurred_bg, 18));
-        blurred_bg.add_effect (brightness_effect);
+        //  blurred_bg = new BackgroundManager (display, display.get_primary_monitor (), true, false);
+        //  blurred_bg.add_effect (new BlurEffect (blurred_bg, 18));
+        //  blurred_bg.add_effect (brightness_effect);
 
-        insert_child_below (blurred_bg, null);
+        //  insert_child_below (blurred_bg, null);
     }
 
     /**
